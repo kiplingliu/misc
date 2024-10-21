@@ -2,6 +2,9 @@ import json
 import urllib.request
 import re
 import functools
+import difflib
+
+from bs4 import BeautifulSoup
 
 def request(action, **params):
     return {'action': action, 'params': params, 'version': 6}
@@ -40,14 +43,21 @@ ids = [info['noteId'] for info in infos]
 
 # its a stable sort, so this will work fine
 
-replace_fields = ['FullDefinition', 'PitchPosition', 'Frequency', 'FreqSort']
+replace_fields = ['Frequency', 'FreqSort']
 i = 0
 while i < len(infos)-1:
     if infos[i]['fields']['Expression']['value'] == infos[i+1]['fields']['Expression']['value']:
-        invoke('updateNote', note={
-            "id": ids[i],
-            "fields": {f: infos[i+1]['fields'][f]['value'] for f in replace_fields},
-        })
-        invoke('deleteNotes', notes=[ids[i+1]])
+        fields1 = infos[i]['fields']
+        fields2 = infos[i]['fields']
+        print(fields1['Expression']['value'])
+        for field in fields1.keys():
+            val1 = fields1[field]['value']
+            val2 = fields2[field]['value']
+            soup1 = BeautifulSoup(val1, 'html.parser')
+            soup2 = BeautifulSoup(val2, 'html.parser')
+            diff = difflib.unified_diff(soup1.prettify(), soup2.prettify())
+            if len(list(diff)) != 0:
+                print('\n'.join(list(diff)))
+        print()
         i += 1
     i += 1
