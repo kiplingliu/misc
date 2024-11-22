@@ -248,15 +248,21 @@ local function create_audio(s, e)
     '--video=no',
     '--no-ocopy-metadata',
     '--no-sub',
-    '--audio-channels=1',
+    '--audio-channels=mono',
     string.format('--start=%.3f', s),
     string.format('--length=%.3f', t),
     string.format('--aid=%s', aid),
     string.format('--volume=%s', USE_MPV_VOLUME and mp.get_property('volume') or '100'),
-    string.format("--af-append=afade=t=in:curve=ipar:st=%.3f:d=%.3f", s, AUDIO_CLIP_FADE),
-    string.format("--af-append=afade=t=out:curve=ipar:st=%.3f:d=%.3f", s + t - AUDIO_CLIP_FADE, AUDIO_CLIP_FADE),
-    string.format('-o=%s', destination)
   }
+  if AUDIO_FORMAT == "opus" then
+    -- Opus: https://ffmpeg.org/ffmpeg-codecs.html#libopus-1, https://wiki.hydrogenaud.io/index.php?title=Opus
+    table.insert(cmd, '--oac=libopus')
+    table.insert(cmd, '--oacopts-add=apply_phase_inv=0')
+    table.insert(cmd, '--oacopts-add=b=24k')
+  end
+  table.insert(cmd, string.format("--af-append=afade=t=in:curve=ipar:st=%.3f:d=%.3f", s, AUDIO_CLIP_FADE))
+  table.insert(cmd, string.format("--af-append=afade=t=out:curve=ipar:st=%.3f:d=%.3f", s + t - AUDIO_CLIP_FADE, AUDIO_CLIP_FADE))
+  table.insert(cmd, string.format('-o=%s', destination))
   mp.commandv(table.unpack(cmd))
   dlog(utils.to_string(cmd))
 end
