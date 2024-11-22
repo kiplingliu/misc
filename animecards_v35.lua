@@ -282,15 +282,20 @@ local function create_screenshot(s, e)
     '--frames=1',
   }
   if IMAGE_FORMAT == 'webp' then
+  -- WebP: https://www.ffmpeg.org/ffmpeg-codecs.html#libwebp
     table.insert(cmd, '--ovc=libwebp')
     table.insert(cmd, '--ovcopts-add=lossless=0')
     table.insert(cmd, '--ovcopts-add=compression_level=6')
-    table.insert(cmd, '--ovcopts-add=preset=drawing')
+    table.insert(cmd, '--ovcopts-add=quality=80')
+    -- table.insert(cmd, '--ovcopts-add=preset=drawing') -- Makes it worse
   elseif IMAGE_FORMAT == 'png' then
     table.insert(cmd, '--vf-add=format=rgb24')
   end
-  table.insert(cmd, '--vf-add=scale=480*iw*sar/ih:480')
-  table.insert(cmd, string.format('--start=%.3f', mp.get_property_number("time-pos")))
+
+  -- Scaler: https://www.ffmpeg.org/ffmpeg-filters.html#scale-1, https://www.ffmpeg.org/ffmpeg-scaler.html
+  -- Scaler options: https://superuser.com/a/375726, https://stackoverflow.com/a/70894724
+  table.insert(cmd, '--vf-add=lavfi=[scale=-2:480:flags=lanczos+accurate_rnd+full_chroma_int]')
+  table.insert(cmd, string.format('--start=%.3f', math.max(s, e-1)))
   table.insert(cmd, string.format('-o=%s', img))
   mp.commandv(table.unpack(cmd))
   dlog(utils.to_string(cmd))
