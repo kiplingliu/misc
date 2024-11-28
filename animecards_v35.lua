@@ -213,6 +213,15 @@ until [ -f "]] .. destination .. [[" ] ; do sleep 1; done ]]}
   end
 end
 
+-- Taken from https://github.com/Ajatt-Tools/mpvacious/blob/master/encoder.lua
+local common_args = {
+  '--no-config',
+  '--loop-file=no',
+  '--keep-open=no',
+  '--no-sub',
+  '--no-ocopy-metadata',
+}
+
 local function create_audio(s, e)
 
   if s == nil or e == nil then
@@ -244,19 +253,28 @@ local function create_audio(s, e)
     'run',
     'mpv',
     source,
-    '--loop-file=no',
     '--video=no',
-    '--no-ocopy-metadata',
-    '--no-sub',
-    '--audio-channels=1',
+    '--audio-channels=mono',
     string.format('--start=%.3f', s),
     string.format('--length=%.3f', t),
     string.format('--aid=%s', aid),
     string.format('--volume=%s', USE_MPV_VOLUME and mp.get_property('volume') or '100'),
     string.format("--af-append=afade=t=in:curve=ipar:st=%.3f:d=%.3f", s, AUDIO_CLIP_FADE),
     string.format("--af-append=afade=t=out:curve=ipar:st=%.3f:d=%.3f", s + t - AUDIO_CLIP_FADE, AUDIO_CLIP_FADE),
-    string.format('-o=%s', destination)
+    string.format('-o=%s', destination),
+    table.unpack(common_args) -- https://www.lua.org/manual/5.1/manual.html#2.5
   }
+
+  -- Opus:
+  -- -- https://wiki.xiph.org/Opus_Recommended_Settings
+  -- -- https://wiki.hydrogenaud.io/index.php?title=Opus
+  if AUDIO_FORMAT == "opus" then
+    table.insert(cmd, '--oac=libopus')
+    -- table.insert(cmd, '--oacopts-add=application=voip')
+    -- table.insert(cmd, '--oacopts-add=apply_phase_inv=0') -- Only applies to encoding stereo: https://gitlab.freedesktop.org/gstreamer/gst-plugins-base/-/issues/409
+    table.insert(cmd, '--oacopts-add=b=32k')
+  end
+
   mp.commandv(table.unpack(cmd))
   dlog(utils.to_string(cmd))
 end
