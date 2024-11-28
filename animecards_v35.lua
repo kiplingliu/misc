@@ -324,7 +324,9 @@ end
 local function anki_connect(action, params)
   local request = utils.format_json({action=action, params=params, version=6})
   local args
-  if platform == 'windows' then
+
+  -- Always use curl because powershell is slow
+  if false then
     args = {
       'powershell', '-NoProfile', '-Command', [[& {
       $data = Invoke-RestMethod -Uri http://127.0.0.1:8765 -Method Post -ContentType 'application/json; charset=UTF-8' -Body @"]] .. "\n" .. request .. "\n" .. [["@ | ConvertTo-Json -Depth 10
