@@ -48,7 +48,7 @@ local WORD_AUDIO_FIELD = ""
 local AUTOPLAY_AUDIO = false
 -- Optional screenshot image format.
 -- Change to "jpeg" if you plan to view cards on iOS or Mac.
-local IMAGE_FORMAT = "webp"
+local IMAGE_FORMAT = "avif"
 local AUDIO_FORMAT = "opus"
 -- Optional set to true if you want your volume in mpv to affect Anki card volume.
 local USE_MPV_VOLUME = false
@@ -287,13 +287,28 @@ local function create_screenshot(s, e)
     'run',
     'mpv',
     source,
-    '--loop-file=no',
     '--audio=no',
-    '--no-ocopy-metadata',
-    '--no-sub',
     '--frames=1',
+    string.format('--start=%.3f', e-1),
+    "--vf-add=lavfi=[scale=-2:'min(480,ih)':flags=lanczos+accurate_rnd]", -- TODO: flags
+    string.format('-o=%s', img),
+    table.unpack(common_args)
   }
-  if IMAGE_FORMAT == 'webp' then
+
+  -- AVIF:
+  -- -- aomenc: https://wiki.x266.mov/docs/encoders/aomenc
+  -- -- AVIF: https://www.reddit.com/r/AV1/comments/o7s8hk/
+  -- -- AV1: https://www.reddit.com/r/AV1/comments/t59j32/
+  -- -- AV1: https://gist.github.com/shssoichiro/a46ff01db70243c1719479f6518ea34d
+  -- -- mpvacious: https://github.com/Ajatt-Tools/mpvacious/pull/127
+  if IMAGE_FORMAT == 'avif' then
+    table.insert(cmd, '--ovc=libaom-av1')
+    table.insert(cmd, '--ovcopts-add=cpu-used=3')
+    table.insert(cmd, '--ovcopts-add=crf=20')
+    table.insert(cmd, '--ovcopts-add=still-picture=1')
+
+  -- Not optimized
+  elseif IMAGE_FORMAT == 'webp' then
     table.insert(cmd, '--ovc=libwebp')
     table.insert(cmd, '--ovcopts-add=lossless=0')
     table.insert(cmd, '--ovcopts-add=compression_level=6')
@@ -301,9 +316,7 @@ local function create_screenshot(s, e)
   elseif IMAGE_FORMAT == 'png' then
     table.insert(cmd, '--vf-add=format=rgb24')
   end
-  table.insert(cmd, '--vf-add=scale=480*iw*sar/ih:480')
-  table.insert(cmd, string.format('--start=%.3f', mp.get_property_number("time-pos")))
-  table.insert(cmd, string.format('-o=%s', img))
+
   mp.commandv(table.unpack(cmd))
   dlog(utils.to_string(cmd))
 end
