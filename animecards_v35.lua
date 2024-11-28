@@ -49,6 +49,7 @@ local AUTOPLAY_AUDIO = false
 -- Optional screenshot image format.
 -- Change to "jpeg" if you plan to view cards on iOS or Mac.
 local IMAGE_FORMAT = "webp"
+local AUDIO_FORMAT = "opus"
 -- Optional set to true if you want your volume in mpv to affect Anki card volume.
 local USE_MPV_VOLUME = false
 ---------------------------------------
@@ -219,7 +220,7 @@ local function create_audio(s, e)
   end
 
   local name = get_name(s, e)
-  local destination = utils.join_path(prefix, name .. '.mp3')
+  local destination = utils.join_path(prefix, name .. '.' .. AUDIO_FORMAT)
   s = s - AUDIO_CLIP_PADDING
   local t = e - s + AUDIO_CLIP_PADDING
   local source = mp.get_property("path")
@@ -482,12 +483,12 @@ local function get_extract()
     create_screenshot(s, e)
     create_audio(s, e)
     local ifield = '<img src='.. get_name(s,e) ..'.' .. IMAGE_FORMAT .. '>'
-    local afield = "[sound:".. get_name(s,e) .. ".mp3]"
+    local afield = "[sound:".. get_name(s,e) .. '.' .. AUDIO_FORMAT .. ']'
     local tfield = string.gsub(string.gsub(lines,"\n+", "<br />"), "\r", "")
     local forvo_path = add_to_last_added(ifield, afield, tfield)
     if AUTOPLAY_AUDIO then
       local name = get_name(s, e)
-      local audio = utils.join_path(prefix, name .. '.mp3')
+      local audio = utils.join_path(prefix, name .. '.' .. AUDIO_FORMAT)
       local cmd = {'run', 'mpv'}
       if forvo_path ~= nil then
         table.insert(cmd, forvo_path)
