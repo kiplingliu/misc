@@ -85,7 +85,42 @@ local function clean(s)
 end
 
 local function get_name(s, e)
-  return mp.get_property("filename"):gsub('%W','').. tostring(s) .. tostring(e)
+  -- s and e are timestamps in seconds relative to the start of the file
+  -- Use 3 digits for milliseconds
+  local range = string.format("%.3f", s) .. string.format("%.3f", e)
+
+  -- Append date so that no two files have the same name
+  -- -- Anki doesn't sync edits to existing files: https://docs.ankiweb.net/syncing.html#media
+  -- -- https://forums.ankiweb.net/t/media-references-don-t-auto-refresh-in-2-1-60/38392
+  local date = os.date("%Y%m%d%H%M%S")
+  local suffix = range .. date
+
+  -- Strings returned (?) by mpv are UTF-8: https://mpv.io/manual/master/#utf-8
+  -- Strings (?) in rust are UTF-8: https://doc.rust-lang.org/rust-by-example/std/str.html
+  -- Note: Lua 5.1 doesn't have the UTF-8 library, so we use https://stackoverflow.com/a/13238257
+  --
+  -- Filename restrictions:
+  -- -- Can't contain certain characters (covered by '%W')
+  -- -- Must be <= 120 bytes (?)
+  -- mpvacious filename code: https://github.com/Ajatt-Tools/mpvacious/blob/master/utils/filename_factory.lua
+  -- Anki filename code: https://github.com/ankitects/anki/blob/main/rslib/src/media/files.rs
+  local rbytes = 120 - (#suffix + 1 + math.max(#IMAGE_FORMAT, #AUDIO_FORMAT))
+  local name = mp.get_property("filename/no-ext"):gsub('%b[]', ''):gsub('%b()', ''):gsub('[%c%p%s]', '')
+  if #name > rbytes then
+    local res = ''
+    for uchar in name:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+      if string.len(res .. uchar) > rbytes then
+        break
+      end
+      res = res .. uchar
+    end
+    name = res
+    -- local first_excl = utf8.offset(name, 0, rbytes + 1) -- byte pos of first char we must exclude
+    -- name = string.sub(name, 1, first_excl - 1)
+  end
+  name = name .. suffix
+  dlog(string.format('generated name %s, byte length %d', name, #name))
+  return name
 end
 
 local function get_clipboard()
