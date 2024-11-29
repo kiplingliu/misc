@@ -7,6 +7,8 @@
 -- -- Select all the subtitle lines you wish to add to the card.
 -- -- Ctrl + c
 -- -- Tab back to MPV and Ctrl + v
+-- -- Seek to the frame you want to use as the screenshot (Ctrl + g to cancel)
+-- -- Ctrl + v again to confirm
 -- -- Done. The lines, their respective Audio and the current paused image
 -- -- will be added to the back of the card.
 -- -- Ctrl + t will toggle clipboard inserter on and off.
@@ -324,7 +326,7 @@ local function create_screenshot(s, e)
     source,
     '--audio=no',
     '--frames=1',
-    string.format('--start=%.3f', e-1),
+    string.format('--start=%.3f', mp.get_property_number("time-pos")),
     "--vf-add=lavfi=[scale=-2:'min(480,ih)':flags=lanczos+accurate_rnd]", -- TODO: flags
     string.format('-o=%s', img),
     table.unpack(common_args)
@@ -485,15 +487,22 @@ local function get_forvo_audio(word)
   return utils.join_path(prefix, "forvo_" .. word .. '.mp3')
 end
 
+local function new_extractor()
+local lines
+local e
+local s
+
+local noteid
+local note
+local word
+
+local in_progress = false
+local saved_time_pos
+
 local function add_to_last_added(ifield, afield, tfield)
   local forvo_path = nil
-  local added_notes = anki_connect('findNotes', {query='added:1'})["result"]
-  table.sort(added_notes)
-  local noteid = added_notes[#added_notes]
-  local note = anki_connect('notesInfo', {notes={noteid}})
 
   if note ~= nil then
-    local word = note["result"][1]["fields"][FRONT_FIELD]["value"]
     local new_fields = {
       [SENTENCE_AUDIO_FIELD]=afield,
       [SENTENCE_FIELD]=tfield,
@@ -525,10 +534,10 @@ local function add_to_last_added(ifield, afield, tfield)
   return forvo_path
 end
 
-local function get_extract()
-  local lines = get_clipboard()
-  local e = 0
-  local s = 0
+local function get_subs_range()
+  lines = get_clipboard()
+  e = 0
+  s = 0
   for line in lines:gmatch("[^\r\n]+") do
     line = clean(line)
     dlog(line)
@@ -543,10 +552,28 @@ local function get_extract()
       end
     else
       mp.osd_message("ERR! Line not found: " .. line, 3)
-      return
+      error()
     end
   end
   dlog(string.format('s=%d, e=%d', s, e))
+end
+
+local function get_last_added()
+  local added_notes = anki_connect('findNotes', {query='added:1'})["result"]
+  table.sort(added_notes)
+  noteid = added_notes[#added_notes]
+  note = anki_connect('notesInfo', {notes={noteid}})
+
+  if note ~= nil then
+    word = note["result"][1]["fields"][FRONT_FIELD]["value"]
+    mp.osd_message("Updating note: " .. word, 3)
+  else
+    mp.osd_message("ERR! No last added card", 3)
+    error()
+  end
+end
+
+local function get_extract_helper()
   if e ~= 0 then
     create_screenshot(s, e)
     create_audio(s, e)
@@ -568,6 +595,41 @@ local function get_extract()
     end
   end
 end
+
+local function cancel_extract()
+  if in_progress then
+    in_progress = false
+    mp.set_property_number("time-pos", saved_time_pos)
+  end
+end
+
+local function get_extract()
+  if not in_progress then
+    if not pcall(get_subs_range) then
+      cancel_extract()
+      return
+    end
+
+    mp.set_property_bool("pause", true)
+    in_progress = true
+    saved_time_pos = mp.get_property_number("time-pos")
+    mp.set_property_number("time-pos", e)
+
+    if not pcall(get_last_added) then
+      cancel_extract()
+      return
+    end
+  else
+    get_extract_helper()
+
+    in_progress = false
+    mp.set_property_number("time-pos", saved_time_pos)
+  end
+end
+
+return get_extract, cancel_extract
+end
+local get_extract, cancel_extract = new_extractor()
 
 local function ex()
   if debug_mode then
@@ -603,6 +665,7 @@ mp.observe_property("sub-text", 'string', rec)
 mp.observe_property("filename", "string", clear_subs)
 
 mp.add_key_binding("ctrl+v", "update-anki-card", ex)
+mp.add_key_binding("ctrl+g", cancel_extract)
 mp.add_key_binding("ctrl+t", "toggle-clipboard-insertion", toggle_sub_to_clipboard)
 mp.add_key_binding("ctrl+d", "toggle-debug-mode", toggle_debug_mode)
 mp.add_key_binding("ctrl+V", ex)
