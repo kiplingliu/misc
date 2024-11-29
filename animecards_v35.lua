@@ -29,10 +29,10 @@ local msg = require 'mp.msg'
 
 ------------- User Config -------------
 -- Set these to match your field names in Anki
-local FRONT_FIELD = "Word"
-local SENTENCE_AUDIO_FIELD = "Sentence-Audio"
+local FRONT_FIELD = "Expression"
+local SENTENCE_AUDIO_FIELD = "SentenceAudio"
 local SENTENCE_FIELD = "Sentence"
-local IMAGE_FIELD = "Picture"
+local IMAGE_FIELD = "Image"
 -- Anki collection media path. Ensure Anki username is correct.
 -- Linux users will want to set this to something like:
 -- utils.join_path(os.getenv('HOME'), [[.local/share/Anki2/User 1/collection.media]])
@@ -57,7 +57,7 @@ local USE_MPV_VOLUME = false
 ---------------------------------------
 
 local subs = {}
-local enable_subs_to_clip = true
+local enable_subs_to_clip = false
 local debug_mode = false
 local use_powershell_clipboard = nil
 
