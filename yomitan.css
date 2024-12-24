@@ -1,0 +1,6 @@
+button[title^="Add reading"] {
+  display:none;
+}
+button.action-button[title^="Add duplicate"] {
+  display: none;
+}
