@@ -510,7 +510,9 @@
       if (ignoredDicts.some((name) => newName.includes(name))) {
         // skip
       } else if (newName === "Jidoujisho") {
-        const jidoujishoEntries = `{{FullDefinition}}`.split("<br><br>");
+        // Without String.raw, gives error for 新英和 def of 給与 b/c it includes text that looks like octal
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Deprecated_octal_escape_sequence
+        const jidoujishoEntries = String.raw`{{FullDefinition}}`.split("<br><br>");
         jidoujishoEntries.forEach((entry) => {
           const match = /(?<!\S)【(.*?)】<br>/.exec(entry);
           if (match) {
@@ -540,7 +542,7 @@
         });
       } else if (newName === "FullDefinition") {
         const fullDefDiv = document.createElement("div");
-        fullDefDiv.innerHTML = `{{FullDefinition}}`;
+        fullDefDiv.innerHTML = String.raw`{{FullDefinition}}`;
         entries[newName] = fullDefDiv;
       } else {
         while (Object.keys(entries).includes(newName)) {
@@ -553,9 +555,9 @@
       return entries;
     }, {});
 
-    if (`{{MainDefinition}}`) {
+    if (String.raw`{{MainDefinition}}`) {
       const mainDefDiv = document.createElement("div");
-      mainDefDiv.innerHTML = `{{MainDefinition}}`;
+      mainDefDiv.innerHTML = String.raw`{{MainDefinition}}`;
       dictEntries["MainDefinition"] = mainDefDiv;
     }
 
