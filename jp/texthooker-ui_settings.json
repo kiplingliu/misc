@@ -24,7 +24,7 @@
         "allowNewLineDuringPause$": true,
         "autoStartTimerDuringPausePaste$": false,
         "autoStartTimerDuringPause$": true,
-        "preventGlobalDuplicate$": true,
+        "preventGlobalDuplicate$": false,
         "mergeEqualLineStarts$": false,
         "flashOnMissedLine$": true,
         "displayVertical$": false,
