@@ -1,0 +1,38 @@
+{
+    "explorer.confirmDragAndDrop": false,
+    "editor.minimap.enabled": false,
+    "vim.useSystemClipboard": true,
+    "vim.normalModeKeyBindings": [
+        {
+            "before": [
+                "g",
+                "r"
+            ],
+            "commands": [
+                "editor.action.referenceSearch.trigger"
+            ],
+        },
+        {
+            "before": [ "k" ],
+            "after": [ "g", "k" ]
+        },
+        {
+            "before": [ "j" ],
+            "after": [ "g", "j" ]
+        }
+    ],
+    "telemetry.telemetryLevel": "off",
+    "terminal.integrated.scrollback": 20000,
+    "files.readonlyInclude": {
+        "**/.cargo/registry/src/**/*.rs": true,
+        "**/.cargo/git/checkouts/**/*.rs": true,
+        "**/lib/rustlib/src/rust/library/**/*.rs": true,
+    },
+    "debug.allowBreakpointsEverywhere": true,
+    "[rust]": {
+        "editor.formatOnSave": true
+    },
+    "github.copilot.enable": {
+        "*": false,
+    },
+}
