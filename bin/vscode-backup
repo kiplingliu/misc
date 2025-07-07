@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+BACKUP_DIR="$HOME/Proj/misc"
+APPDATA="$(cmd.exe /c echo %APPDATA% 2>/dev/null | sed 's/\r//' | sed 's|^C:|/mnt/c|' | sed 's|\\|/|g')"
+VSCODE_SETTINGS="$APPDATA/Code/User/settings.json"
+
+cmd.exe /c code --list-extensions 2>/dev/null >$BACKUP_DIR/vscode-local-extensions.txt
+code --list-extensions | awk 'NR == 1 && /^Extensions installed on WSL.*$/ {next} {print}' >$BACKUP_DIR/vscode-wsl-extensions.txt
+cp $VSCODE_SETTINGS $BACKUP_DIR/vscode-settings.json
