@@ -1,3 +1,0 @@
-ankiconnect_url=http://172.31.224.1:8765
-query=deck:JP::Vocab
-expression_field=Expression
