@@ -1,0 +1,12 @@
+// https://stackoverflow.com/a/43012779
+[
+    {
+        "key": "ctrl+j",
+        "command": "workbench.action.terminal.focus",
+    },
+    {
+        "key": "ctrl+j",
+        "command": "workbench.action.focusActiveEditorGroup",
+        "when": "!editorFocus"
+    },
+]
