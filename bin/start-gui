@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if ! tasklist.exe 2>/dev/null | grep -q Code.exe; then
+    (cd ~/Notes && code .)
+fi
+
+# Sometimes after waking up from sleep, X11 programs disappear
+# See https://superuser.com/questions/1474559
+nohup ensure-single -r okular &
+nohup ensure-single -r -s 2 keepassxc &
