@@ -1,0 +1,12 @@
+#!/bin/bash
+
+SYMLINK_PATH="$1"
+
+if [ ! -L "$SYMLINK_PATH" ]; then
+    echo "Error: The provided path is not a symbolic link: '$SYMLINK_PATH'" >&2
+    exit 1
+fi
+
+TEMP_FILE=$(mktemp)
+cp "$SYMLINK_PATH" "$TEMP_FILE"
+mv "$TEMP_FILE" "$SYMLINK_PATH"
