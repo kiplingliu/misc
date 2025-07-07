@@ -1,0 +1,53 @@
+#!/bin/bash
+
+QUIET=false
+SLEEP_LENGTH=0
+REPLACE=false
+
+log_message() {
+    if ! $QUIET; then
+        echo "$1"
+    fi
+}
+
+while getopts "qrs:" opt; do
+  case $opt in
+    q)
+      QUIET=true
+      ;;
+    r)
+      REPLACE=true
+      ;;
+    s)
+      SLEEP_LENGTH=$OPTARG
+      ;;
+    \?)
+      log_message "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND-1))
+
+CMD="$1"
+if [[ -z "$CMD" ]]; then
+    log_message "Usage: $0 [-q] [-r] [-s <length>] <command>"
+    exit 1
+fi
+
+if pgrep -x "$CMD" >/dev/null; then
+    if $REPLACE; then
+        log_message "Killing existing $CMD process."
+        pkill -x "$CMD"
+        if [[ "$SLEEP_LENGTH" -gt 0 ]]; then
+            log_message "Sleeping for $SLEEP_LENGTH seconds before starting $CMD."
+            sleep "$SLEEP_LENGTH"
+        fi
+    else
+        log_message "$CMD is already running."
+        exit 0
+    fi
+fi
+
+log_message "Starting $CMD."
+$CMD
