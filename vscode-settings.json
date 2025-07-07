@@ -1,0 +1,23 @@
+{
+    "explorer.confirmDragAndDrop": false,
+    "editor.minimap.enabled": false,
+    "vim.useSystemClipboard": true,
+    "vim.normalModeKeyBindings": [
+        {
+            "before": [
+                "g",
+                "r"
+            ],
+            "commands": [
+                "editor.action.referenceSearch.trigger"
+            ],
+        },
+    ],
+    "telemetry.telemetryLevel": "off",
+    "terminal.integrated.scrollback": 20000,
+    "files.readonlyInclude": {
+        "**/.cargo/registry/src/**/*.rs": true,
+        "**/.cargo/git/checkouts/**/*.rs": true,
+        "**/lib/rustlib/src/rust/library/**/*.rs": true,
+    },
+}
