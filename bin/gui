@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+if ! tasklist.exe 2>/dev/null | grep -q Code.exe; then
+    (cd ~/Notes && code .)
+fi
+nohup ensure-single okular &
+nohup ensure-single -r -s 2 keepassxc &
