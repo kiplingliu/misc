@@ -1,0 +1,48 @@
+# https://blog.gitbutler.com/how-git-core-devs-configure-git/
+# https://gist.github.com/mwhite/6887990
+# https://stackoverflow.com/a/9074343
+
+[user]
+	name = Kipling Liu
+	email = kipling.i.liu@gmail.com
+
+[core]
+	editor = vim
+	excludesfile = ~/.gitignore
+
+[init]
+	defaultBranch = master
+
+[push]
+	autoSetupRemote = true
+
+[rebase]
+	autoSquash = true
+	autoStash = true
+	updateRefs = true
+
+[rerere]
+	enabled = true
+	autoupdate = true
+
+[commit]
+	verbose = true
+
+[diff]
+	colorMoved = default
+	algorithm = histogram
+
+[branch]
+	sort = committerdate
+
+[alias]
+	br = branch
+	ci = commit
+	co = checkout
+	cp = cherry-pick
+	dc = diff --cached
+	di = diff
+	lg = log --graph --abbrev-commit --decorate --format=format:'%C(blue)%h%C(reset) - %C(green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)' --all
+	rb = rebase
+	st = status -s
+	oops = commit -a --amend --no-edit
