@@ -1,0 +1,10 @@
+[Unit]
+Description=Run daily backup
+
+[Service]
+Type=oneshot
+Environment="PATH=/usr/bin"
+ExecStart=%h/bin/backup -v
+
+[Install]
+WantedBy=default.target
