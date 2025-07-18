@@ -1,0 +1,8 @@
+build-essential
+curl
+fd-find
+git
+keepassxc
+okular
+rclone
+ripgrep
