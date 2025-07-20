@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""
+A script to streamline creating git fixup commits for uncommitted changes.
+
+This script finds modified files, prompts the user to select a target commit
+from the file's history using fzf, creates a fixup! commit, and finally
+launches an interactive rebase with --autosquash.
+"""
+
+import subprocess
+import sys
+from typing import Optional
+
+
+def run_git(args: list[str]) -> subprocess.CompletedProcess:
+    """Run a Git command and handle common errors."""
+    try:
+        return subprocess.run(
+            ["git"] + args,
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8",
+        )
+    except FileNotFoundError:
+        print(
+            "Error: `git` command not found. Is Git installed and in your PATH?",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(
+            f"Error: Git command failed with exit code {e.returncode}:", file=sys.stderr
+        )
+        print(e.stderr, file=sys.stderr)
+        sys.exit(1)
+
+
+def get_changed_files() -> list[tuple[str, str]]:
+    """Get a list of uncommitted files with their status."""
+    result = run_git(["status", "--porcelain=v1"])
+    lines = result.stdout.splitlines()
+    # A list comprehension is more Pythonic than map+lambda
+    return [(line[:2], line[3:]) for line in lines]
+
+
+def get_commit_history(file_path: str) -> str:
+    """Fetch the commit history for a specific file as a formatted string."""
+    # Using a short hash (%h) is fine for display purposes
+    result = run_git(
+        ["log", "--pretty=format:%h|%ad|%s", "--date=short", "--", file_path]
+    )
+    return result.stdout
+
+
+def prompt_user_with_fzf(choices: str, file_path: str) -> Optional[str]:
+    """Display choices in fzf and return the user's selection."""
+    if not choices:
+        print(f"No commit history found for {file_path}. Skipping.")
+        return None
+
+    header = f"Select a commit to fix up for: {file_path}"
+    fzf_command = ["fzf", "--height=40%", "--reverse", "--header", header]
+
+    try:
+        fzf_process = subprocess.Popen(
+            fzf_command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+        )
+    except FileNotFoundError:
+        print(
+            "Error: `fzf` is not installed. Please install it to use this script.",
+            file=sys.stderr,
+        )
+        return None
+
+    stdout, _ = fzf_process.communicate(input=choices)
+
+    # A non-zero return code means the user cancelled (e.g., pressed Esc)
+    if fzf_process.returncode != 0:
+        print(f"Skipping {file_path} (selection cancelled).")
+        return None
+
+    # Parse the selected line to extract just the commit hash
+    return stdout.strip().split("|")[0]
+
+
+def create_fixup_commit(target_hash: str, file_path: str):
+    """Stage a file and create a fixup commit for it."""
+    print(f"Creating fixup for {file_path} -> {target_hash}")
+    run_git(["add", file_path])
+    run_git(["commit", "--fixup", target_hash])
+
+
+def run_interactive_rebase(target_hashes: list[str]):
+    """Find the oldest ancestor and run an interactive rebase."""
+    if not target_hashes:
+        print("No fixup commits created. Nothing to rebase.")
+        return
+
+    # To find the rebase starting point, we find the oldest commit among our targets.
+    # We can get the UNIX timestamp of each commit and find the minimum.
+    timestamps = {}
+    for commit_hash in set(target_hashes):
+        result = run_git(["show", "-s", "--format=%ct", commit_hash])
+        timestamps[commit_hash] = int(result.stdout.strip())
+
+    oldest_commit_hash = min(timestamps, key=timestamps.get)
+
+    # Inspect parent hashes; empty output means the commit is the root.
+    parent_result = run_git(["show", "-s", "--format=%P", oldest_commit_hash])
+    has_parent = bool(parent_result.stdout.strip())
+
+    if has_parent:
+        print(
+            f"\nOldest target commit is {oldest_commit_hash}. Starting interactive rebase..."
+        )
+        rebase_command = [
+            "git",
+            "rebase",
+            "-i",
+            "--autosquash",
+            f"{oldest_commit_hash}^",
+        ]
+    else:
+        print(
+            f"\nOldest target commit is {oldest_commit_hash} (initial commit). "
+            "Starting interactive rebase from --root..."
+        )
+        rebase_command = ["git", "rebase", "-i", "--autosquash", "--root"]
+
+    # We run rebase non-interactively in the script, letting it open the user's editor.
+    # We don't capture output, allowing it to run directly in the terminal.
+    try:
+        subprocess.run(rebase_command, check=True)
+    except subprocess.CalledProcessError:
+        print("\nRebase failed. Please resolve conflicts manually.", file=sys.stderr)
+        sys.exit(1)
+
+
+def main():
+    """Main script execution flow."""
+    changed_files = get_changed_files()
+    if not changed_files:
+        print("No uncommitted changes found.")
+        return
+
+    # Exit if any files are already staged
+    if any(status[0] != ' ' and status != "??" for status, _ in changed_files):
+        print(
+            "Error: Staged changes detected. Please unstage them before running.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    target_commit_hashes = []
+    for status, file_path in changed_files:
+        if status == "??":
+            print(f"Skipping untracked file: {file_path}")
+            continue
+
+        commit_history = get_commit_history(file_path)
+        selected_hash = prompt_user_with_fzf(commit_history, file_path)
+
+        if selected_hash:
+            create_fixup_commit(selected_hash, file_path)
+            target_commit_hashes.append(selected_hash)
+
+    run_interactive_rebase(target_commit_hashes)
+
+
+if __name__ == "__main__":
+    main()
