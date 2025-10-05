@@ -1,0 +1,26 @@
+! YT feed page
+!! Home feed
+www.youtube.com##ytd-browse[page-subtype="home"]
+!! Shorts grid
+www.youtube.com##ytd-rich-section-renderer
+
+! YT watch page
+!! Recommendations
+www.youtube.com###related
+www.youtube.com##.videowall-endscreen
+www.youtube.com##.ytp-fullscreen-grid-stills-container
+!! In two-column mode, don't remove secondary column if playing a playlist or livestream
+www.youtube.com###secondary:not(:has(ytd-playlist-panel-renderer:not([hidden]))):not(:has(ytd-live-chat-frame)):not(:has(ytd-browse-feed-actions-renderer))
+
+! YT search page
+!! Shorts grid
+www.youtube.com##grid-shelf-view-model
+!! Shorts results
+www.youtube.com##ytd-video-renderer:has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"])
+!! Irrelevant search results
+www.youtube.com##ytd-shelf-renderer
+
+! YT hamburger menu
+!! Shorts buttons
+www.youtube.com##ytd-guide-section-renderer:nth-child(1) > div:nth-child(2) > ytd-guide-entry-renderer:nth-child(2)
+www.youtube.com##ytd-mini-guide-entry-renderer:nth-child(2)
