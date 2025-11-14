@@ -22,10 +22,14 @@ ln -s $(which fdfind) ~/.local/bin/fd
 
 mkdir ~/Proj && cd ~/Proj && git clone https://github.com/kiplingliu/misc
 ln -s ~/Proj/misc/bin ~/bin
+ln -s ~/Proj/misc/.bashrc_public ~/.bashrc_public
 ln -s ~/Proj/misc/.gitconfig ~/.gitconfig
 cat <<'EOF' >~/.inputrc
 set editing-mode vi
 set show-mode-in-prompt on
+EOF
+cat <<'EOF' >>~/.bashrc
+if [[ -f ~/.bashrc_public ]]; then . ~/.bashrc_public; fi
 EOF
 
 # Daily backup service
