@@ -1,0 +1,4 @@
+#!/bin/bash
+
+co() { g++ -std=c++17 -O2 -Wall "$1"; }
+run() { co "$1" && ./a.out <test.in; }
