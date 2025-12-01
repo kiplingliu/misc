@@ -5,8 +5,13 @@ A script to streamline creating git fixup commits for uncommitted changes.
 This script finds modified files, prompts the user to select a target commit
 from the file's history using fzf, creates a fixup! commit, and finally
 launches an interactive rebase with --autosquash.
+
+Optionally, the script can create a fixup commit from the current index via
+the --manual flag, letting the user pick a target commit from a list enriched
+with the files touched by each commit.
 """
 
+import argparse
 import subprocess
 import sys
 from typing import Optional
@@ -44,23 +49,61 @@ def get_changed_files() -> list[tuple[str, str]]:
     return [(line[:2], line[3:]) for line in lines]
 
 
-def get_commit_history(file_path: str) -> str:
-    """Fetch the commit history for a specific file as a formatted string."""
-    # Using a short hash (%h) is fine for display purposes
+def get_commit_history(file_path: str) -> tuple[list[str], list[str]]:
+    """Fetch commit history for a file, returning display lines and full hashes."""
     result = run_git(
-        ["log", "--pretty=format:%h|%ad|%s", "--date=short", "--", file_path]
+        ["log", "--pretty=format:%H|%h|%ad|%s", "--date=short", "--", file_path]
     )
-    return result.stdout
+
+    display_lines: list[str] = []
+    hash_values: list[str] = []
+
+    for raw_line in result.stdout.splitlines():
+        if not raw_line.strip():
+            continue
+
+        parts = raw_line.split("|", 3)
+        if len(parts) < 4:
+            continue
+
+        full_hash, short_hash, date_str, subject = parts
+        clean_subject = subject.replace("\n", " ").replace("|", " ")
+        display_lines.append(f"{short_hash} {date_str} {clean_subject}")
+        hash_values.append(full_hash)
+
+    return display_lines, hash_values
 
 
-def prompt_user_with_fzf(choices: str, file_path: str) -> Optional[str]:
-    """Display choices in fzf and return the user's selection."""
-    if not choices:
-        print(f"No commit history found for {file_path}. Skipping.")
+def prompt_user_with_fzf(
+    display_options: list[str],
+    context_label: str,
+    return_values: Optional[list[str]] = None,
+) -> Optional[str]:
+    """Display selections in fzf and return the associated value."""
+    if not display_options:
+        print(f"No commit history found for {context_label}. Skipping.")
         return None
 
-    header = f"Select a commit to fix up for: {file_path}"
-    fzf_command = ["fzf", "--height=40%", "--reverse", "--header", header]
+    if return_values and len(return_values) != len(display_options):
+        raise ValueError("Display options and return values must have equal length.")
+
+    header = f"Select a commit to fix up for: {context_label}"
+    fzf_command = [
+        "fzf",
+        "--height=40%",
+        "--reverse",
+        "--header",
+        header,
+        "--delimiter",
+        "\t",
+        "--with-nth",
+        "2..",
+    ]
+
+    enumerated_choices = [
+        f"{index + 1}\t{display_options[index]}"
+        for index in range(len(display_options))
+    ]
 
     try:
         fzf_process = subprocess.Popen(
@@ -77,22 +120,160 @@ def prompt_user_with_fzf(choices: str, file_path: str) -> Optional[str]:
         )
         return None
 
-    stdout, _ = fzf_process.communicate(input=choices)
+    stdout, _ = fzf_process.communicate(input="\n".join(enumerated_choices))
 
-    # A non-zero return code means the user cancelled (e.g., pressed Esc)
     if fzf_process.returncode != 0:
-        print(f"Skipping {file_path} (selection cancelled).")
+        print(f"Skipping {context_label} (selection cancelled).")
         return None
 
-    # Parse the selected line to extract just the commit hash
-    return stdout.strip().split("|")[0]
+    selected_line = stdout.strip()
+    if not selected_line:
+        print(f"Skipping {context_label} (empty selection).")
+        return None
+
+    try:
+        index_str, _ = selected_line.split("\t", 1)
+        selection_index = int(index_str) - 1
+    except ValueError:
+        print(
+            f"Skipping {context_label} (unable to parse selection '{selected_line}').",
+            file=sys.stderr,
+        )
+        return None
+
+    if not (0 <= selection_index < len(display_options)):
+        print(
+            f"Skipping {context_label} (selection out of range).",
+            file=sys.stderr,
+        )
+        return None
+
+    if return_values:
+        return return_values[selection_index]
+
+    return display_options[selection_index]
 
 
 def create_fixup_commit(target_hash: str, file_path: str):
     """Stage a file and create a fixup commit for it."""
     print(f"Creating fixup for {file_path} -> {target_hash}")
     run_git(["add", file_path])
-    run_git(["commit", "--fixup", target_hash])
+    run_git(["commit", "-m", f"fixup! {target_hash}"])
+
+
+def create_fixup_from_index(target_hash: str):
+    """Create a fixup commit using the currently staged changes."""
+    print(f"Creating fixup for staged changes -> {target_hash}")
+    run_git(["commit", "-m", f"fixup! {target_hash}"])
+
+
+def get_staged_files() -> list[str]:
+    """Return a list of staged file paths."""
+    result = run_git(["diff", "--cached", "--name-only"])
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def build_commit_choices(limit: int) -> tuple[list[str], list[str]]:
+    """Construct commit choices including touched files for fzf selection."""
+    limit = max(1, limit)
+    log_result = run_git(
+        [
+            "log",
+            f"-n{limit}",
+            "--date=short",
+            "--pretty=format:%H\x1f%h\x1f%ad\x1f%s\x1e",
+        ]
+    )
+
+    records = [record for record in log_result.stdout.split("\x1e") if record.strip()]
+    display_options: list[str] = []
+    commit_hashes: list[str] = []
+
+    for record in records:
+        try:
+            full_hash, short_hash, date_str, subject = record.strip().split("\x1f", 3)
+        except ValueError:
+            continue
+
+        diff_result = run_git(
+            [
+                "diff-tree",
+                "--no-commit-id",
+                "--name-status",
+                "-r",
+                full_hash,
+            ]
+        )
+
+        file_summaries = []
+        for raw_line in diff_result.stdout.splitlines():
+            parts = raw_line.split("\t")
+            if not parts:
+                continue
+
+            status = parts[0]
+            if status.startswith("R") and len(parts) >= 3:
+                file_summaries.append(f"{status} {parts[1]} -> {parts[2]}")
+            elif len(parts) >= 2:
+                file_summaries.append(f"{status} {parts[1]}")
+
+        if file_summaries:
+            summary = "; ".join(file_summaries[:5])
+            if len(file_summaries) > 5:
+                summary += "; ..."
+        else:
+            summary = "(no file changes)"
+
+        clean_subject = subject.replace("\n", " ").replace("|", " ")
+        display_options.append(
+            f"{short_hash} {date_str} {clean_subject} | {summary}"
+        )
+        commit_hashes.append(full_hash)
+
+    return display_options, commit_hashes
+
+
+def manual_fixup_flow(commit_limit: int):
+    """Create a fixup commit from staged changes and launch rebase."""
+    staged_files = get_staged_files()
+
+    if not staged_files:
+        print(
+            "Error: No staged changes detected. Stage changes before using --manual.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    display_options, commit_hashes = build_commit_choices(commit_limit)
+    selected_hash = prompt_user_with_fzf(
+        display_options,
+        "staged changes",
+        commit_hashes,
+    )
+
+    if not selected_hash:
+        print("Manual fixup cancelled.")
+        return
+
+    create_fixup_from_index(selected_hash)
+    run_interactive_rebase([selected_hash])
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for the script."""
+    parser = argparse.ArgumentParser(description="Create fixup commits quickly.")
+    parser.add_argument(
+        "--manual",
+        action="store_true",
+        help="Create a fixup! commit from the currently staged changes.",
+    )
+    parser.add_argument(
+        "--log-limit",
+        type=int,
+        default=50,
+        help="Number of commits to show when selecting fixup targets (manual mode).",
+    )
+    return parser.parse_args()
 
 
 def run_interactive_rebase(target_hashes: list[str]):
@@ -143,6 +324,12 @@ def run_interactive_rebase(target_hashes: list[str]):
 
 def main():
     """Main script execution flow."""
+    args = parse_args()
+
+    if args.manual:
+        manual_fixup_flow(args.log_limit)
+        return
+
     changed_files = get_changed_files()
     if not changed_files:
         print("No uncommitted changes found.")
@@ -162,8 +349,8 @@ def main():
             print(f"Skipping untracked file: {file_path}")
             continue
 
-        commit_history = get_commit_history(file_path)
-        selected_hash = prompt_user_with_fzf(commit_history, file_path)
+        display_lines, hash_values = get_commit_history(file_path)
+        selected_hash = prompt_user_with_fzf(display_lines, file_path, hash_values)
 
         if selected_hash:
             create_fixup_commit(selected_hash, file_path)
