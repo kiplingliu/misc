@@ -8,6 +8,7 @@
 - install [rust](https://www.rust-lang.org/tools/install) with `rustup` (changes `~/.bashrc`)
 - install [node.js](https://nodejs.org/en/download) with `fnm` (changes `~/.bashrc`)
 - install [fzf](https://github.com/junegunn/fzf?tab=readme-ov-file#using-git) (changes `~/.bashrc`)
+- install [uv](https://docs.astral.sh/uv/)
 - install [lazygit](https://github.com/jesseduffield/lazygit?tab=readme-ov-file#installation) (TODO: which way?)
 - install [docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) and follow [post-installation](https://docs.docker.com/engine/install/linux-postinstall/)
 
