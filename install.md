@@ -42,3 +42,5 @@ systemctl --user enable --now daily-backup.timer
 ```
 
 ## windows (TODO)
+
+- in cmd, run `setx WSLENV "%WSLENV%:USERPROFILE/up"`, then restart WSL

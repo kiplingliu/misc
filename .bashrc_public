@@ -1,4 +1,10 @@
 #!/bin/bash
 
+shopt -s direxpand
+
+# shellcheck disable=SC2034
+# directory abbreviations don't need to be exported
+wd="$USERPROFILE/Downloads"
+
 co() { g++ -std=c++17 -O2 -Wall "$1"; }
 run() { co "$1" && ./a.out <test.in; }
