@@ -562,15 +562,6 @@
     }
 
     dictNames = Object.keys(dictEntries);
-    if (
-      !isJidoujisho &&
-      dictNames.toString().toLowerCase().includes("jmdict")
-    ) {
-      dictNames = dictNames.filter(
-        (name) => !name.toLowerCase().includes("jmdict")
-      );
-      dictNames.unshift("(JMdict)");
-    }
 
     if (priorityDicts) {
       dictNames = dictNames.sort((a, b) => {
