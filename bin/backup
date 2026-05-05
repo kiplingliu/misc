@@ -33,7 +33,6 @@ if [[ $DRY_RUN -ne 1 ]]; then
 fi
 
 BACKUP_PATHS=(
-    "$(xdg-user-dir DESKTOP)"
     "$(xdg-user-dir DOCUMENTS)"
     "$NOTES_BUNDLE"
 )
