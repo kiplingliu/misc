@@ -6,4 +6,3 @@ keepassxc
 okular
 rclone
 ripgrep
-yt-dlp
