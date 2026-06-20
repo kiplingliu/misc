@@ -47,5 +47,6 @@
     },
     "markdownlint.focusMode": 2,
     "git.enableSmartCommit": true,
-    "workbench.colorTheme": "Dark Modern"
+    "workbench.colorTheme": "Dark Modern",
+    "task.allowAutomaticTasks": "on"
 }

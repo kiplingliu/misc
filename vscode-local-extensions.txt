@@ -1,4 +1,3 @@
-github.copilot-chat
 ms-python.debugpy
 ms-python.python
 ms-python.vscode-pylance

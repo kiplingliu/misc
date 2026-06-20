@@ -1,7 +1,6 @@
 charliermarsh.ruff
 davidanson.vscode-markdownlint
 dbaeumer.vscode-eslint
-github.copilot-chat
 github.vscode-pull-request-github
 golang.go
 james-yu.latex-workshop
@@ -20,6 +19,7 @@ ms-vsliveshare.vsliveshare
 redhat.java
 rust-lang.rust-analyzer
 stackbreak.comment-divider
+svelte.svelte-vscode
 timonwong.shellcheck
 twxs.cmake
 vadimcn.vscode-lldb
@@ -29,6 +29,5 @@ vscjava.vscode-java-debug
 vscjava.vscode-java-dependency
 vscjava.vscode-java-pack
 vscjava.vscode-java-test
-vscjava.vscode-java-upgrade
 vscjava.vscode-maven
 yzhang.markdown-all-in-one
