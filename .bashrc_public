@@ -8,3 +8,12 @@ wd="$USERPROFILE/Downloads"
 
 co() { g++ -std=c++17 -O2 -Wall "$1"; }
 run() { co "$1" && ./a.out <test.in; }
+
+claude() {
+    ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" \
+    ANTHROPIC_AUTH_TOKEN="$(get-secret "DeepSeek API key")" \
+    ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" \
+    ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" \
+    ANTHROPIC_DEFAULT_HAIKU_MODEL="deepseek-v4-flash" \
+    command claude "$@"
+}

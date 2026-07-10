@@ -12,6 +12,7 @@
 - install [docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) and follow [post-installation](https://docs.docker.com/engine/install/linux-postinstall/)
 - install [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation) to `~/.local/bin`
 - install [git-filter-repo](https://github.com/newren/git-filter-repo#how-do-i-install-it) to `~/.local/bin`
+- follow instructions from `bin/get-secret` to generate gpg key
 
 ### backup
 
