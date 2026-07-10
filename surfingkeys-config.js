@@ -239,12 +239,19 @@ map('q', 'Click on an image or a button');
 mapkey('q', '#1Toggle a comment open/closed', function () {
     api.Hints.create('summary', dispatchMouseClick);
 }, { domain: new RegExp(REDLIB_URL.replace(/^https?:\/\//, '').replace(/\./g, '\\.')) });
-mapkey('q', 'Search full text of item with google', function () {
-    api.Hints.create('h3', function (element) {
-        api.Clipboard.write(element.innerText);
-        api.Normal.feedkeys(descToTmpKeyDict['Search selected within current site with google']);
+
+mapkey(',s', 'Search full text of item with google', function () {
+    // See filterOverlapElements
+    api.Hints.create('[role="heading"]', function (element) {
+        query = element.innerText + ' site:aliexpress.com';
+        api.RUNTIME('openLink', {
+            tab: {
+                tabbed: true
+            },
+            url: 'https://www.google.com/search?q=' + encodeURIComponent(query)
+        });
     });
-}, { domain: /aliexpress\.com/ });
+}, { domain: /aliexpress\.us/ });
 
 map('j', 'Scroll down');
 map('k', 'Scroll up');
