@@ -175,6 +175,26 @@ const [map, mapkey, getKeysStatus, descToTmpKeyDict] = (function () {
     return [map, mapkey, getKeysStatus, descToTmpKeyDict];
 })();
 
+function waitForElement(root, selector, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+        const element = root.querySelector(selector);
+        if (element) return resolve(element);
+
+        const startTime = Date.now();
+        
+        const interval = setInterval(() => {
+            const el = root.querySelector(selector);
+            if (el) {
+                clearInterval(interval);
+                resolve(el);
+            } else if (Date.now() - startTime > timeout) {
+                clearInterval(interval);
+                reject(new Error(`Timeout: Element ${selector} did not appear within ${timeout}ms`));
+            }
+        }, 100);
+    });
+}
+
 /* -------------------------------- Mappings -------------------------------- */
 
 mapkey('f', '#1Open a link with transformation', function () {
@@ -252,6 +272,18 @@ mapkey(',s', 'Search full text of item with google', function () {
         });
     });
 }, { domain: /aliexpress\.us/ });
+mapkey(',d', 'Delete chat', function () {
+    api.Hints.create('gem-nav-list-item[data-test-id="conversation"]', async function (element) {
+        actionsMenuButton = await waitForElement(element, 'gem-icon-button[data-test-id="actions-menu-button"');
+        actionsMenuButton.click();
+
+        deleteButton = await waitForElement(document, 'button[data-test-id="delete-button"]');
+        deleteButton.click();
+
+        confirmDeleteButton = await waitForElement(document, 'mat-dialog-actions > gem-button:nth-child(2)');
+        confirmDeleteButton.click();
+    });
+}, { domain: /gemini.google.com/ });
 
 map('j', 'Scroll down');
 map('k', 'Scroll up');
