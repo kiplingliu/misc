@@ -108,7 +108,7 @@ def get_title(transcript: Transcript) -> str:
     return lst[0].aiTitle if len(lst) > 0 else ""
 
 
-def select_active_session() -> SessionData | None:
+def get_active_sessions() -> list[SessionData]:
     lst: list[SessionData] = list(
         filter(
             lambda session_data: is_alive(session_data.pid),
@@ -120,6 +120,30 @@ def select_active_session() -> SessionData | None:
             ),
         )
     )
+    return lst
+
+
+def get_parent_session() -> SessionData | None:
+    active_sessions = get_active_sessions()
+    pids = set(session_data.pid for session_data in active_sessions)
+
+    pid = os.getppid()
+    for _ in range(10):
+        if pid in pids:
+            return next(s for s in active_sessions if s.pid == pid)
+        # walk up to parent
+        try:
+            stat = Path(f"/proc/{pid}/stat").read_text()
+            # comm is the only parenthesized field — find the LAST ')'
+            # format after ')': state ppid pgrp ...
+            pid = int(stat[stat.rindex(")") + 2 :].split()[1])
+        except (FileNotFoundError, PermissionError):
+            break
+    return None
+
+
+def select_active_session() -> SessionData | None:
+    lst: list[SessionData] = get_active_sessions()
 
     if len(lst) == 0:
         return None
@@ -143,9 +167,13 @@ if session_id is None:
 
 transcript = get_transcript(session_id)
 
+found = False
 for transcript_line in reversed(transcript):
     if isinstance(transcript_line, AssistantMessageData):
         for block in reversed(transcript_line.message.content):
             if isinstance(block, TextBlock):
                 print(block.text)
+                found = True
                 break
+    if found:
+        break
