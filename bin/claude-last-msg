@@ -1,0 +1,151 @@
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# dependencies = ["pydantic"]
+# ///
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Annotated, Any, Literal, TypeVar
+
+from pydantic import BaseModel, BeforeValidator, Field, TypeAdapter, ValidationError
+
+T = TypeVar("T")
+
+
+def conforms_to(x: object, t: type[T]):
+    try:
+        TypeAdapter(t).validate_python(x)
+    except ValidationError:
+        return False
+    return True
+
+
+class TextBlock(BaseModel):
+    type: Literal["text"]
+    text: str
+
+
+KnownBlock = Annotated[TextBlock, Field(discriminator="type")]
+
+
+def filter_unknown_blocks(content: Any) -> list[Any]:
+    if not isinstance(content, list):
+        raise ValueError
+
+    return list(filter(lambda x: conforms_to(x, KnownBlock), content))
+
+
+class Message(BaseModel):
+    content: Annotated[
+        list[KnownBlock],
+        BeforeValidator(filter_unknown_blocks),
+    ]
+
+
+class MessageData(BaseModel):
+    message: Message
+
+
+class UserMessageData(MessageData):
+    type: Literal["user"]
+
+
+class AssistantMessageData(MessageData):
+    type: Literal["assistant"]
+
+
+class TitleData(BaseModel):
+    type: Literal["ai-title"]
+    aiTitle: str
+
+
+TranscriptLine = Annotated[
+    TitleData | UserMessageData | AssistantMessageData, Field(discriminator="type")
+]
+
+
+def filter_unknown_lines(lines: Any) -> list[Any]:
+    if not isinstance(lines, list):
+        raise ValueError
+
+    return list(filter(lambda x: conforms_to(x, TranscriptLine), lines))
+
+
+Transcript = Annotated[list[TranscriptLine], BeforeValidator(filter_unknown_lines)]
+
+
+class SessionData(BaseModel):
+    pid: int
+    sessionId: str
+
+
+CONFIG_DIR = Path("~/.claude").expanduser()
+
+
+def is_alive(pid: int) -> bool:
+    try:
+        subprocess.run(["ps", "-p", f"{pid}"], check=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
+def get_transcript(session_id: str) -> Transcript:
+    path = next((CONFIG_DIR / "projects").rglob(f"{session_id}.jsonl"))
+    with open(path) as f:
+        lst = list(map(lambda line: json.loads(line), f.readlines()))
+
+    lst = TypeAdapter(Transcript).validate_python(lst)
+    return lst
+
+
+def get_title(transcript: Transcript) -> str:
+    lst: list[TitleData] = [line for line in transcript if isinstance(line, TitleData)]
+    return lst[0].aiTitle if len(lst) > 0 else ""
+
+
+def select_active_session() -> SessionData | None:
+    lst: list[SessionData] = list(
+        filter(
+            lambda session_data: is_alive(session_data.pid),
+            TypeAdapter(list[SessionData]).validate_python(
+                [
+                    json.loads(p.read_text())
+                    for p in (CONFIG_DIR / "sessions").glob("*.json")
+                ]
+            ),
+        )
+    )
+
+    if len(lst) == 0:
+        return None
+
+    if len(lst) == 1:
+        return lst[0]
+
+    for i, session_data in enumerate(lst):
+        title = get_title(get_transcript(session_data.sessionId))
+        print(f"[{i}] {session_data.sessionId}: {title}", file=sys.stderr)
+    print("Enter a selection: ", end="", file=sys.stderr)
+    selection = int(input())
+    if selection >= 0 and selection < len(lst):
+        return lst[selection]
+    return None
+
+
+session_id = os.getenv("CLAUDE_SESSION_ID")
+if session_id is None:
+    session_id = select_active_session().sessionId
+
+transcript = get_transcript(session_id)
+
+for transcript_line in reversed(transcript):
+    if isinstance(transcript_line, AssistantMessageData):
+        for block in reversed(transcript_line.message.content):
+            if isinstance(block, TextBlock):
+                print(block.text)
+                break
