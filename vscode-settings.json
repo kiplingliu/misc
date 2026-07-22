@@ -48,5 +48,8 @@
     "markdownlint.focusMode": 2,
     "git.enableSmartCommit": true,
     "workbench.colorTheme": "Dark Modern",
-    "task.allowAutomaticTasks": "on"
+    "task.allowAutomaticTasks": "on",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.showOnlyDirectDependenciesInAutoImport": true,
+    "python.analysis.diagnosticMode": "workspace",
 }
